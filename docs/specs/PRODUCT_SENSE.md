@@ -1,94 +1,79 @@
 # PRODUCT_SENSE.md
 
-## Product Vision
+> **Scope:** User problems, success metrics, and scope control. Vision, target user, and non-goals are defined once in [PROJECT_CONTEXT.md](../../PROJECT_CONTEXT.md) and not repeated here.
 
-The product is not a remote desktop.
-
-The product is a robotics developer cockpit.
-
----
-
-## Target User
-
-Primary User:
-
-Robotics Engineer
-
-Examples:
-
-* ROS2 developer
-* Isaac Lab developer
-* Reinforcement learning engineer
-* MPC engineer
-* Autonomous systems engineer
+This document looks at the product from a product-management angle: which problems we solve, how success is measured, and where the scope boundary sits.
 
 ---
 
 ## User Problems
 
-Problem 1
+### Problem 1: Training runs for hours
 
-Training runs for hours.
+Isaac Lab and reinforcement-learning jobs run unattended for hours.
 
-User wants visibility while away from PC.
-
----
-
-Problem 2
-
-Builds fail remotely.
-
-User wants quick diagnostics.
+The engineer wants visibility into reward, loss, and status while away from the workstation.
 
 ---
 
-Problem 3
+### Problem 2: Builds fail remotely
 
-Source code is difficult to inspect from a phone.
+C++ and ROS2 builds fail while the engineer is away.
 
-User wants lightweight project browsing.
+The engineer wants fast diagnostics: read the build log and the error without opening a laptop.
 
 ---
 
-Problem 4
+### Problem 3: Source code is hard to read on a phone
 
-Logs are scattered.
+Codebases are large. Standard remote desktop is unreadable on a phone screen.
 
-User wants centralized access.
+The engineer wants a lightweight, mobile-native code browser (read-only in V1).
+
+---
+
+### Problem 4: Logs are scattered
+
+Build logs, ROS2 logs, and training logs live in different places.
+
+The engineer wants centralized, mobile-friendly log access.
 
 ---
 
 ## Success Metrics
 
-Version 1:
+V1 (Terminal + Workspace):
 
-* terminal usable
-* files browsable
-* images viewable
+* Terminal is usable for remote command execution.
+* Project files are browsable.
+* Images and figures are viewable.
 
-Version 2:
+V2 (Robotics dashboards):
 
-* ROS2 dashboard
-* Isaac Lab dashboard
+* ROS2 nodes and topics are visible.
+* Isaac Lab training metrics are visible.
 
-Version 3:
+V3 (AI assistant):
 
-* AI project assistant
-* AI log analyzer
-* AI code navigator
+* Natural-language project search works.
+* Logs are analyzable by AI.
+* Daily work can be summarized by AI.
+
+Phase deliverables and release versions live in [PLAN.md](PLAN.md).
 
 ---
 
-## Features To Reject
+## Scope Boundaries
 
-Reject:
+The phone is a monitoring and intervention device, not a workstation replacement.
 
-* Full IDE on phone
-* Desktop replacement
-* Complex code editing
+Rejected (see PROJECT_CONTEXT.md Non Goals):
 
-Reason:
+* Full IDE on the phone.
+* Desktop replacement.
+* Complex code editing.
 
-Phone is a monitoring and intervention device.
+Deferred:
 
-The workstation remains the primary development environment.
+* File editing (V1 is read-only).
+* AI command execution (always requires human approval).

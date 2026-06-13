@@ -1,5 +1,7 @@
 # SECURITY.md
 
+> **Scope:** Threat model and security controls across all subsystems. See [PROJECT_CONTEXT.md](../../PROJECT_CONTEXT.md) for the security-requirements summary.
+
 ## Security Philosophy
 
 Remote terminal access is extremely dangerous.

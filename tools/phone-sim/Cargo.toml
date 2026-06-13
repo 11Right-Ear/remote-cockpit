@@ -1,0 +1,12 @@
+[package]
+name = "phone-sim"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "phone-sim"
+path = "src/main.rs"
+
+[dependencies]
+# Filled in Task 9.

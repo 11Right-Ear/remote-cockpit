@@ -1,0 +1,12 @@
+[package]
+name = "server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "rc-gateway"
+path = "src/main.rs"
+
+[dependencies]
+# Filled in Task 7.

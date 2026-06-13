@@ -37,3 +37,10 @@ target/
 *.key
 *.pem
 credentials.*
+
+# Rust
+/target
+
+# SQLite (local audit db)
+*.db
+*.db-journal

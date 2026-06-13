@@ -1,5 +1,7 @@
 # BACKEND.md
 
+> **Scope:** Backend Gateway (`server/`) — routing, identity, sessions. Terminal execution, file reads, and metrics originate in the Desktop Agent and are only routed here. See [AGENTS.md](../../AGENTS.md) for the agent-to-subsystem mapping.
+
 ## Philosophy
 
 Backend should be lightweight.

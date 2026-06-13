@@ -1,16 +1,36 @@
 # PROJECT_CONTEXT.md
 
+The one-page project charter.
+
+Detailed specifications live in docs/specs/.
+
+---
+
+## Documentation Map
+
+| Document | Purpose |
+|----------|---------|
+| AGENTS.md | HARNESS agent roles, collaboration flow, phase activation |
+| docs/specs/ARCHITECTURE.md | System architecture, subsystem boundaries |
+| docs/specs/BACKEND.md | Backend Gateway service design |
+| docs/specs/FRONTEND.md | Android Client design, screens |
+| docs/specs/SECURITY.md | Security model, threat model |
+| docs/specs/PLAN.md | Development phases, deliverables, success criteria |
+| docs/specs/PRODUCT_SENSE.md | Product scope, problems, success metrics |
+
+---
+
 ## Project Name
 
 Remote Robotics Developer Cockpit
 
 ---
 
-# Project Background
+## Project Background
 
 The project owner is a robotics engineer.
 
-Current technical interests include:
+Technical interests:
 
 * ROS2
 * Isaac Lab
@@ -20,309 +40,132 @@ Current technical interests include:
 * Robot Simulation
 * C++
 * AI Agent Systems
-* Vibe Coding Workflows
 
-The project is intended to improve developer productivity and remote access to development environments.
+The goal is a specialized developer cockpit for robotics engineers.
 
-The goal is not to create another remote desktop solution.
-
-The goal is to create a specialized developer cockpit optimized for robotics engineers.
+This is not another remote desktop solution.
 
 ---
 
-# Core Problem
+## Core Problem
 
-The developer frequently runs:
+The developer frequently runs long tasks:
 
 * Isaac Lab training
 * ROS2 systems
-* Long-running builds
+* Long builds
 * Reinforcement learning experiments
 * Robot simulations
 
-The developer wants visibility and control while away from the workstation.
+The developer wants visibility and control while away from the workstation: outside, commuting, eating, traveling.
 
-Examples:
-
-* Outside
-* Commuting
-* Eating
-* Traveling
-
-The developer should be able to inspect and interact with the development workstation from an Android phone.
+The developer should inspect and interact with the workstation from an Android phone.
 
 ---
 
-# Product Vision
+## Product Vision
 
 The phone becomes a portable operations center.
 
 The workstation remains the primary development machine.
 
-The phone becomes:
-
-* monitor
-* observer
-* controller
-* assistant
-
-for development workflows.
+The phone becomes monitor, observer, controller, assistant for development workflows.
 
 ---
 
-# Non Goals
+## Non Goals
 
 Do NOT build:
 
 * Full IDE
 * VSCode replacement
 * Remote desktop clone
-* Desktop operating system replacement
+* Desktop OS replacement
 
 Avoid feature creep.
 
 ---
 
-# Target User
+## Target User
 
-Primary User:
+Primary user: Robotics Engineer.
 
-Robotics Engineer
-
-Examples:
-
-* ROS2 Developer
-* RL Engineer
-* Simulation Engineer
-* MPC Engineer
-* Autonomous Systems Engineer
-
-Future users may include:
-
-* AI Engineers
-* Infrastructure Engineers
-* Embedded Engineers
+Examples: ROS2 Developer, RL Engineer, Simulation Engineer, MPC Engineer, Autonomous Systems Engineer.
 
 ---
 
-# Primary Use Cases
+## Primary Use Cases
 
-## Use Case 1
+High-level list. Detailed screen design in docs/specs/FRONTEND.md.
 
-Remote Terminal Access
-
-User opens phone.
-
-User views workstation terminal output.
-
-User sends commands.
-
-Expected functionality:
-
-* realtime output
-* realtime command execution
-* command history
+1. Remote Terminal Access
+2. File Inspection (read-only in V1)
+3. Image Preview
+4. Log Analysis
+5. Git Awareness
+6. Robotics Monitoring (ROS2)
+7. Isaac Lab Monitoring
 
 ---
 
-## Use Case 2
-
-File Inspection
-
-User browses project files.
-
-User opens:
-
-* cpp
-* hpp
-* py
-* yaml
-* json
-* md
-
-files.
-
-Version 1 should be read-only.
-
----
-
-## Use Case 3
-
-Image Preview
-
-User views:
-
-* screenshots
-* generated figures
-* robot images
-* training images
-
-without remote desktop software.
-
----
-
-## Use Case 4
-
-Log Analysis
-
-User views:
-
-* build logs
-* ROS2 logs
-* training logs
-
-directly from phone.
-
----
-
-## Use Case 5
-
-Git Awareness
-
-User checks:
-
-* modified files
-* current branch
-* recent commits
-
-while away from workstation.
-
----
-
-## Use Case 6
-
-Robotics Monitoring
-
-User views:
-
-* ROS2 node list
-* topic list
-* robot status
-* system status
-
-from mobile device.
-
----
-
-## Use Case 7
-
-Isaac Lab Monitoring
-
-User views:
-
-* reward
-* loss
-* episode
-* FPS
-* experiment metadata
-
-without opening workstation.
-
----
-
-# Long-Term Vision
+## Long-Term Vision
 
 The system evolves into an AI-powered operations platform.
 
-The user communicates naturally:
+The user asks natural questions:
 
-Example:
+* "Why did training stop?"
+* "Find MPC weights."
+* "Summarize today's work."
 
-"Why did training stop?"
-
-Example:
-
-"Find MPC weights."
-
-Example:
-
-"Summarize today's work."
-
-The system analyzes:
-
-* source code
-* logs
-* terminal history
-* git history
-
-and returns answers.
+The system analyzes source code, logs, terminal history, git history and returns answers.
 
 ---
 
-# Technical Architecture
+## Technical Architecture
 
-Four major components:
+Four components:
 
 1. Android Client
 2. Backend Gateway
 3. Desktop Agent
 4. AI Agent
 
-Architecture:
+```text
+Android Client  <->  Backend Gateway  <->  Desktop Agent  <->  Workstation Resources
+```
 
-Android Client
-↕
+Resources: Terminal, Files, Images, Logs, ROS2, Isaac Lab.
 
-Backend Gateway
-↕
-
-Desktop Agent
-↕
-
-Workstation Resources
-
-Resources include:
-
-* Terminal
-* Files
-* Images
-* Logs
-* ROS2
-* Isaac Lab
+Detailed boundaries in docs/specs/ARCHITECTURE.md.
 
 ---
 
-# System Philosophy
+## System Philosophy
 
-Thin Client
+Thin Client.
 
 The Android application should remain lightweight.
 
-Heavy logic belongs to:
-
-* Desktop Agent
-* Backend Services
-* AI Agent
+Heavy logic belongs to the Desktop Agent, Backend Services, and AI Agent.
 
 ---
 
-# Most Important Component
+## Most Important Component
 
-Desktop Agent
+Desktop Agent.
 
-Reason:
-
-The Desktop Agent provides:
-
-* terminal access
-* file access
-* log access
-* ROS2 integration
-* Isaac Lab integration
+The Desktop Agent provides terminal, file, log, ROS2, and Isaac Lab access.
 
 The mobile application is primarily a visualization layer.
 
-The Desktop Agent is the actual product.
-
-Prioritize Desktop Agent architecture before mobile UI development.
+Prioritize Desktop Agent architecture before mobile UI.
 
 ---
 
-# Security Requirements
+## Security Requirements
 
-Assume Internet exposure.
-
-Security is mandatory.
+Assume Internet exposure. Security is mandatory.
 
 Requirements:
 
@@ -332,180 +175,56 @@ Requirements:
 * Session Management
 * Audit Logs
 
-Version 1 should default to read-only access wherever possible.
+V1 defaults to read-only wherever possible.
 
-AI systems must never execute commands automatically.
+AI systems must never execute commands automatically. Human approval is required.
 
-Human approval is required.
-
----
-
-# Preferred Technology Stack
-
-Mobile:
-
-Flutter
-
-Backend:
-
-Rust or C++
-
-Realtime Communication:
-
-WebSocket
-
-Media Streaming:
-
-WebRTC
-
-Database:
-
-SQLite
-
-Deployment:
-
-Docker
-
-AI:
-
-MCP
-Local LLM
-Cloud LLM
+Detailed model in docs/specs/SECURITY.md.
 
 ---
 
-# Development Strategy
+## Preferred Technology Stack
 
-Phase 0
-
-Research
-
-Deliverables:
-
-* Requirements
-* Architecture
-* Hardware Validation
-
----
-
-Phase 1
-
-Remote Terminal MVP
-
-Deliverables:
-
-* Terminal Streaming
-* Command Input
-* Authentication
-
-Success Criteria:
-
-User can remotely operate terminal.
+| Layer | Choice |
+|-------|--------|
+| Mobile | Flutter |
+| Backend | Rust or C++ |
+| Realtime | WebSocket |
+| Media Streaming | WebRTC |
+| Database | SQLite |
+| Deployment | Docker |
+| AI | MCP, Local LLM, Cloud LLM |
 
 ---
 
-Phase 2
+## Development Phases
 
-Developer Workspace
+* Phase 0 - Research
+* Phase 1 - Remote Terminal MVP
+* Phase 2 - Developer Workspace
+* Phase 3 - Robotics Dashboard
+* Phase 4 - Isaac Lab Dashboard
+* Phase 5 - AI Operations Assistant
 
-Deliverables:
-
-* File Browser
-* Code Viewer
-* Image Viewer
-* Log Viewer
-
-Success Criteria:
-
-User can inspect project status remotely.
+Detailed deliverables and success criteria in docs/specs/PLAN.md.
 
 ---
 
-Phase 3
+## Design Principles
 
-Robotics Dashboard
+Rule 1: The phone is not the workstation.
 
-Deliverables:
+Rule 2: Readability is more important than feature count.
 
-* ROS2 Monitoring
-* Node Viewer
-* Topic Viewer
-* Robot State
+Rule 3: Remote monitoring is more important than remote editing.
 
-Success Criteria:
+Rule 4: Every feature must solve a real robotics workflow problem.
 
-User can monitor robot systems.
+Rule 5: Avoid desktop paradigms. Design for mobile operation.
 
 ---
 
-Phase 4
-
-Isaac Lab Dashboard
-
-Deliverables:
-
-* Reward Curves
-* Training Metrics
-* Experiment Monitoring
-
-Success Criteria:
-
-User can monitor RL training remotely.
-
----
-
-Phase 5
-
-AI Operations Assistant
-
-Deliverables:
-
-* Repository Search
-* Log Analysis
-* Daily Summaries
-* Context-Aware Assistance
-
-Success Criteria:
-
-User can query project state using natural language.
-
----
-
-# Design Principles
-
-Rule 1
-
-The phone is not the workstation.
-
----
-
-Rule 2
-
-Readability is more important than feature count.
-
----
-
-Rule 3
-
-Remote monitoring is more important than remote editing.
-
----
-
-Rule 4
-
-Every feature must solve a real robotics workflow problem.
-
----
-
-Rule 5
-
-Avoid desktop paradigms.
-
-Design specifically for mobile operation.
-
----
-
-# Instructions For Claude Code
+## Instructions For Claude Code
 
 Before implementing anything:
 

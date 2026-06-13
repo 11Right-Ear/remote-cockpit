@@ -1,5 +1,7 @@
 # PLAN.md
 
+> **Scope:** Phased deliverables, durations, success criteria, and release versions. See [AGENTS.md](../../AGENTS.md) for which agents are active in each phase.
+
 ## Phase 0
 
 Research

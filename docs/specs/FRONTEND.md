@@ -1,5 +1,7 @@
 # FRONTEND.md
 
+> **Scope:** Android Client (`mobile/`) — screens, navigation, UX. See [PROJECT_CONTEXT.md](../../PROJECT_CONTEXT.md) and [PRODUCT_SENSE.md](PRODUCT_SENSE.md).
+
 ## Vision
 
 The Android application should feel like:

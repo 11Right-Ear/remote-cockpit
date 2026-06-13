@@ -1,5 +1,7 @@
 # ARCHITECTURE.md
 
+> **Scope:** System architecture and subsystem boundaries. See [PROJECT_CONTEXT.md](../../PROJECT_CONTEXT.md) for the one-line overview and [AGENTS.md](../../AGENTS.md) for ownership.
+
 ## System Overview
 
 Remote Cockpit consists of four major subsystems:

@@ -8,10 +8,12 @@
 //! This crate is intentionally pure data with no I/O, so it can be unit-tested
 //! without an async runtime.
 
+pub mod auth;
 pub mod frame;
 pub mod message;
 pub mod session;
 
+pub use auth::Claims;
 pub use frame::{decode, encode, stream_tag};
 pub use message::{ClientMessage, ServerMessage};
 pub use session::{ClientRole, DeviceId, SessionId};

@@ -44,3 +44,6 @@ credentials.*
 # SQLite (local audit db)
 *.db
 *.db-journal
+
+# Local runtime data (self-signed cert/key, audit db) — never commit
+/.remote-cockpit/

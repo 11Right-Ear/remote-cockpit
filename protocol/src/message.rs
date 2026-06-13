@@ -31,12 +31,13 @@ pub enum ClientMessage {
     },
 
     /// Keystrokes/input destined for the PTY. `data` is base64-encoded bytes.
+    /// Phone -> desktop (routed).
     TerminalInput {
         session_id: SessionId,
         data: String,
     },
 
-    /// Resize the PTY. V1 spawns at 80x24; resize support may follow.
+    /// Resize the PTY. Phone -> desktop (routed). V1 spawns at 80x24.
     TerminalResize {
         session_id: SessionId,
         cols: u16,
@@ -48,9 +49,37 @@ pub enum ClientMessage {
         shell: Option<String>,
     },
 
-    /// Close an existing PTY session.
+    /// Phone asks to close a PTY session.
     CloseSession {
         session_id: SessionId,
+    },
+
+    // --- desktop -> gateway: session lifecycle reports ---
+    // The desktop agent emits these; the gateway audits them and forwards the
+    // equivalent `ServerMessage` to the linked phone. Phones never send these.
+
+    /// Desktop spawned the requested PTY.
+    ReportSessionOpened {
+        session_id: SessionId,
+    },
+
+    /// PTY session ended.
+    ReportSessionClosed {
+        session_id: SessionId,
+    },
+
+    /// Session-level error on the desktop side.
+    ReportSessionError {
+        session_id: SessionId,
+        message: String,
+    },
+
+    /// A dangerous-command pattern matched on the desktop (V1: warn only,
+    /// execution still proceeds per SECURITY.md).
+    ReportDanger {
+        session_id: SessionId,
+        command: String,
+        pattern: String,
     },
 
     /// Heartbeat.
@@ -67,7 +96,8 @@ pub enum ClientMessage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ServerMessage {
-    /// Authentication succeeded.
+    /// Authentication succeeded. `session_id` is a connection-scoped id
+    /// (distinct from PTY session ids, which arrive via `SessionOpened`).
     AuthOk {
         session_id: SessionId,
         server_time_ms: i64,
@@ -84,9 +114,7 @@ pub enum ServerMessage {
         data: String,
     },
 
-    /// A dangerous-command pattern matched. V1: warn only — execution still
-    /// proceeds (per SECURITY.md). The gateway only relays this; detection
-    /// happens in the Desktop Agent.
+    /// A dangerous-command pattern matched. V1: warn only.
     DangerWarn {
         session_id: SessionId,
         command: String,
@@ -98,7 +126,7 @@ pub enum ServerMessage {
         session_id: SessionId,
     },
 
-    /// PTY session ended (peer closed, EOF, or explicit `CloseSession`).
+    /// PTY session ended.
     SessionClosed {
         session_id: SessionId,
     },
@@ -146,7 +174,6 @@ mod tests {
         let json = serde_json::to_string(&msg).unwrap();
         assert!(json.contains(r#""type":"auth""#), "json was: {json}");
         assert!(json.contains(r#""role":"phone""#));
-        // DeviceId is transparent -> bare string value.
         assert!(json.contains(r#""device_id":"dev-ws""#));
 
         let back: ClientMessage = serde_json::from_str(&json).unwrap();
@@ -192,6 +219,28 @@ mod tests {
         let msg = ClientMessage::CloseSession { session_id: sid };
         let json = serde_json::to_string(&msg).unwrap();
         assert!(json.contains(r#""type":"close_session""#));
+    }
+
+    #[test]
+    fn report_variants_shape() {
+        let sid = SessionId::new();
+        let opened = ClientMessage::ReportSessionOpened { session_id: sid };
+        assert!(serde_json::to_string(&opened)
+            .unwrap()
+            .contains(r#""type":"report_session_opened""#));
+
+        let danger = ClientMessage::ReportDanger {
+            session_id: sid,
+            command: "rm -rf /tmp".into(),
+            pattern: r"rm\s+-rf".into(),
+        };
+        let j = serde_json::to_string(&danger).unwrap();
+        assert!(j.contains(r#""type":"report_danger""#));
+        let back: ClientMessage = serde_json::from_str(&j).unwrap();
+        match back {
+            ClientMessage::ReportDanger { command, .. } => assert_eq!(command, "rm -rf /tmp"),
+            _ => panic!("decoded wrong variant"),
+        }
     }
 
     #[test]

@@ -1,0 +1,39 @@
+# OS
+Thumbs.db
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build
+build/
+target/
+dist/
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Rust
+target/
+
+# Flutter
+.dart_tool/
+.packages
+*.iml
+
+# Docker
+*.log
+
+# Secrets
+.env
+*.key
+*.pem
+credentials.*

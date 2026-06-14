@@ -64,6 +64,9 @@ pub async fn run(ws: WsStream, config: &DesktopConfig) -> anyhow::Result<()> {
     let (pty_out_tx, mut pty_out_rx) = mpsc::channel::<Vec<u8>>(64);
     let mut pty: Option<PtySession> = None;
     let mut current_session: Option<SessionId> = None;
+    // Accumulate input and check danger per line: xterm sends one char per
+    // frame, so a per-frame check never matches multi-char patterns (rm -rf).
+    let mut input_buffer: Vec<u8> = Vec::with_capacity(512);
     let mut heartbeat = tokio::time::interval(Duration::from_secs(HEARTBEAT_SECS));
     heartbeat.tick().await; // discard immediate first tick
 
@@ -83,7 +86,7 @@ pub async fn run(ws: WsStream, config: &DesktopConfig) -> anyhow::Result<()> {
                             Ok(m) => {
                                 handle_text(
                                     &m, config, &mut pty, &mut current_session, &danger,
-                                    &mut ws_tx, &pty_out_tx,
+                                    &mut input_buffer, &mut ws_tx, &pty_out_tx,
                                 ).await?;
                             }
                             Err(_) => match serde_json::from_str::<ServerMessage>(&t) {
@@ -131,6 +134,7 @@ async fn handle_text(
     pty: &mut Option<PtySession>,
     current_session: &mut Option<SessionId>,
     danger: &DangerChecker,
+    input_buffer: &mut Vec<u8>,
     ws_tx: &mut futures_util::stream::SplitSink<WsStream, Message>,
     pty_out_tx: &mpsc::Sender<Vec<u8>>,
 ) -> anyhow::Result<()> {
@@ -187,19 +191,26 @@ async fn handle_text(
                     return Ok(());
                 }
             };
-            if let Some(hit) = danger.check(&bytes) {
-                let sid = current_session.unwrap_or_else(SessionId::new);
-                let r = ClientMessage::ReportDanger {
-                    session_id: sid,
-                    command: hit.command,
-                    pattern: hit.pattern,
-                };
-                send(ws_tx, &r).await?;
-            }
+            // Write to the PTY first so echo/execution stay real-time.
             if let Some(session) = pty.as_mut() {
                 if let Err(e) = session.write(&bytes) {
                     tracing::warn!(error=%e, "pty write failed");
                 }
+            }
+            // Accumulate and check danger per line (xterm sends one char per
+            // frame, so a per-frame check never matches multi-char patterns).
+            input_buffer.extend_from_slice(&bytes);
+            if bytes.contains(&b'\r') || bytes.contains(&b'\n') {
+                if let Some(hit) = danger.check(input_buffer) {
+                    let sid = current_session.unwrap_or_else(SessionId::new);
+                    let r = ClientMessage::ReportDanger {
+                        session_id: sid,
+                        command: hit.command,
+                        pattern: hit.pattern,
+                    };
+                    send(ws_tx, &r).await?;
+                }
+                input_buffer.clear();
             }
         }
         ClientMessage::TerminalResize { cols, rows, .. } => {

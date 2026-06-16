@@ -118,6 +118,12 @@ class CockpitClient {
     _send(ReadFileRequest(requestId: requestId, path: path));
   }
 
+  /// Request a read-only image preview. The response arrives as an
+  /// [ImageContentResponse] on [messages], correlated by `requestId`.
+  void requestReadImage(String requestId, String path) {
+    _send(ReadImageRequest(requestId: requestId, path: path));
+  }
+
   /// Close the connection.
   Future<void> close() async {
     await _sub?.cancel();

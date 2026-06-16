@@ -18,6 +18,7 @@ pub mod event {
     pub const DANGER_WARN: &str = "danger_warn";
     pub const DESKTOP_ONLINE: &str = "desktop_online";
     pub const DESKTOP_OFFLINE: &str = "desktop_offline";
+    pub const DIR_LIST: &str = "dir_list";
 }
 
 #[derive(Debug)]

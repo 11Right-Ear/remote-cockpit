@@ -119,6 +119,15 @@ async fn handle_text(
             let fwd = ServerMessage::DangerWarn { session_id, command, pattern };
             forward_to_phone(state, device_id, PhoneOut::Text(serde_json::to_string(&fwd)?));
         }
+        ClientMessage::ReportDirListing { request_id, path, entries } => {
+            // Phase 2 file browser: read-only dir listing. Not tied to a PTY
+            // session, so audit by path only.
+            state
+                .audit()
+                .record(event::DIR_LIST, actor, None, Some(format!("path={path}")));
+            let fwd = ServerMessage::DirListing { request_id, path, entries };
+            forward_to_phone(state, device_id, PhoneOut::Text(serde_json::to_string(&fwd)?));
+        }
         // Desktop should not send phone-originated messages.
         other => tracing::warn!(?other, "unexpected message from desktop"),
     }

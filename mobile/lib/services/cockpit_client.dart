@@ -104,6 +104,13 @@ class CockpitClient {
     ));
   }
 
+  /// Request a read-only directory listing (Phase 2 file browser). The
+  /// response arrives as a [DirListResponse] on [messages], correlated by
+  /// `requestId`.
+  void requestListDir(String requestId, String path) {
+    _send(ListDirRequest(requestId: requestId, path: path));
+  }
+
   /// Close the connection.
   Future<void> close() async {
     await _sub?.cancel();

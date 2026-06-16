@@ -15,6 +15,16 @@ use serde::{Deserialize, Serialize};
 
 use crate::session::{ClientRole, DeviceId, SessionId};
 
+/// One entry in a directory listing (file or subdirectory). Phase 2 file
+/// browser carries only read-only metadata; no content in V1.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DirEntry {
+    pub name: String,
+    pub is_dir: bool,
+    pub size: u64,
+    pub modified_ms: i64,
+}
+
 // ---------------------------------------------------------------------------
 // Client -> Server (uplink): phone or desktop -> gateway
 // ---------------------------------------------------------------------------
@@ -54,6 +64,14 @@ pub enum ClientMessage {
         session_id: SessionId,
     },
 
+    /// Phone asks the desktop to list a directory (Phase 2 file browser, V1
+    /// read-only). `request_id` correlates the async `DirListing` response.
+    /// Phone -> desktop (routed).
+    ListDir {
+        request_id: String,
+        path: String,
+    },
+
     // --- desktop -> gateway: session lifecycle reports ---
     // The desktop agent emits these; the gateway audits them and forwards the
     // equivalent `ServerMessage` to the linked phone. Phones never send these.
@@ -80,6 +98,14 @@ pub enum ClientMessage {
         session_id: SessionId,
         command: String,
         pattern: String,
+    },
+
+    /// Desktop's response to a `ListDir` request. Desktop -> gateway; the
+    /// gateway forwards the equivalent `ServerMessage::DirListing` to the phone.
+    ReportDirListing {
+        request_id: String,
+        path: String,
+        entries: Vec<DirEntry>,
     },
 
     /// Heartbeat.
@@ -151,6 +177,14 @@ pub enum ServerMessage {
     Pong {
         ts_ms: i64,
         server_time_ms: i64,
+    },
+
+    /// Read-only directory listing (Phase 2 file browser). Response to a
+    /// phone's `list_dir` request, correlated by `request_id`.
+    DirListing {
+        request_id: String,
+        path: String,
+        entries: Vec<DirEntry>,
     },
 
     /// Generic protocol-level error.
@@ -306,5 +340,77 @@ mod tests {
         };
         let j = serde_json::to_string(&pong).unwrap();
         assert!(j.contains(r#""type":"pong""#));
+    }
+
+    #[test]
+    fn list_dir_roundtrip() {
+        let msg = ClientMessage::ListDir {
+            request_id: "req-1".into(),
+            path: "/home/dev/project".into(),
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert!(json.contains(r#""type":"list_dir""#));
+        assert!(json.contains(r#""request_id":"req-1""#));
+        let back: ClientMessage = serde_json::from_str(&json).unwrap();
+        match back {
+            ClientMessage::ListDir { request_id, path } => {
+                assert_eq!(request_id, "req-1");
+                assert_eq!(path, "/home/dev/project");
+            }
+            _ => panic!("decoded wrong variant"),
+        }
+    }
+
+    #[test]
+    fn dir_listing_roundtrip() {
+        let entries = vec![
+            DirEntry {
+                name: "src".into(),
+                is_dir: true,
+                size: 0,
+                modified_ms: 1_700_000_000_000,
+            },
+            DirEntry {
+                name: "README.md".into(),
+                is_dir: false,
+                size: 42,
+                modified_ms: 1_700_000_001_000,
+            },
+        ];
+        // desktop -> gateway report
+        let report = ClientMessage::ReportDirListing {
+            request_id: "req-1".into(),
+            path: "/home/dev/project".into(),
+            entries: entries.clone(),
+        };
+        let j = serde_json::to_string(&report).unwrap();
+        assert!(j.contains(r#""type":"report_dir_listing""#));
+        let back: ClientMessage = serde_json::from_str(&j).unwrap();
+        match back {
+            ClientMessage::ReportDirListing { request_id, entries, .. } => {
+                assert_eq!(request_id, "req-1");
+                assert_eq!(entries.len(), 2);
+                assert!(entries[0].is_dir);
+            }
+            _ => panic!("decoded wrong variant"),
+        }
+
+        // gateway -> phone response
+        let resp = ServerMessage::DirListing {
+            request_id: "req-1".into(),
+            path: "/home/dev/project".into(),
+            entries,
+        };
+        let j = serde_json::to_string(&resp).unwrap();
+        assert!(j.contains(r#""type":"dir_listing""#));
+        let back: ServerMessage = serde_json::from_str(&j).unwrap();
+        match back {
+            ServerMessage::DirListing { request_id, entries, .. } => {
+                assert_eq!(request_id, "req-1");
+                assert_eq!(entries.len(), 2);
+                assert_eq!(entries[1].name, "README.md");
+            }
+            _ => panic!("decoded wrong variant"),
+        }
     }
 }

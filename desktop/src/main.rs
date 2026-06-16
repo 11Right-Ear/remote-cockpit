@@ -8,6 +8,7 @@ mod agent_loop;
 mod config;
 mod conn;
 mod danger;
+mod fsbrowse;
 mod pty;
 
 use std::time::Duration;

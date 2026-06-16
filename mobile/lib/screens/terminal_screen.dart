@@ -17,6 +17,7 @@ import 'package:xterm/xterm.dart';
 
 import '../protocol/messages.dart';
 import '../services/cockpit_client.dart';
+import 'files_screen.dart';
 
 class TerminalScreen extends StatefulWidget {
   const TerminalScreen({super.key});
@@ -114,6 +115,17 @@ class _TerminalScreenState extends State<TerminalScreen> {
             if (context.mounted) Navigator.of(context).pop();
           },
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.folder_outlined),
+            tooltip: 'Files',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const FilesScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(

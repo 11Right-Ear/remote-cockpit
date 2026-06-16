@@ -65,6 +65,18 @@ class CloseSessionMessage extends ClientMessage {
       };
 }
 
+class ListDirRequest extends ClientMessage {
+  final String requestId;
+  final String path;
+  const ListDirRequest({required this.requestId, required this.path});
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': 'list_dir',
+        'request_id': requestId,
+        'path': path,
+      };
+}
+
 class PingMessage extends ClientMessage {
   final int tsMs;
   const PingMessage({required this.tsMs});
@@ -127,6 +139,14 @@ abstract class ServerMessage {
         return TerminalOutputMessage(
           sessionId: json['session_id'] as String,
           data: json['data'] as String,
+        );
+      case 'dir_listing':
+        return DirListResponse(
+          requestId: json['request_id'] as String,
+          path: json['path'] as String,
+          entries: (json['entries'] as List<dynamic>)
+              .map((e) => FileEntry.fromJson(e as Map<String, dynamic>))
+              .toList(),
         );
       default:
         return UnknownMessage(type: type?.toString() ?? '');
@@ -203,4 +223,37 @@ class TerminalOutputMessage extends ServerMessage {
 class UnknownMessage extends ServerMessage {
   final String type;
   const UnknownMessage({required this.type});
+}
+
+/// One entry in a directory listing (Phase 2 file browser). Read-only metadata.
+class FileEntry {
+  final String name;
+  final bool isDir;
+  final int size;
+  final int modifiedMs;
+  const FileEntry({
+    required this.name,
+    required this.isDir,
+    required this.size,
+    required this.modifiedMs,
+  });
+
+  factory FileEntry.fromJson(Map<String, dynamic> json) => FileEntry(
+        name: json['name'] as String,
+        isDir: json['is_dir'] as bool,
+        size: (json['size'] as num).toInt(),
+        modifiedMs: (json['modified_ms'] as num).toInt(),
+      );
+}
+
+/// Read-only directory listing (response to `list_dir`). Phase 2 file browser.
+class DirListResponse extends ServerMessage {
+  final String requestId;
+  final String path;
+  final List<FileEntry> entries;
+  const DirListResponse({
+    required this.requestId,
+    required this.path,
+    required this.entries,
+  });
 }

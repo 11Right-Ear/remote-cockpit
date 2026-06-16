@@ -15,5 +15,5 @@ pub mod session;
 
 pub use auth::Claims;
 pub use frame::{decode, encode, stream_tag};
-pub use message::{ClientMessage, ServerMessage};
+pub use message::{ClientMessage, DirEntry, ServerMessage};
 pub use session::{ClientRole, DeviceId, SessionId};

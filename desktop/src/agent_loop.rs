@@ -228,6 +228,42 @@ async fn handle_text(
                 send(ws_tx, &r).await?;
             }
         }
+        ClientMessage::ListDir { request_id, path } => {
+            let request_id = request_id.clone();
+            let req_path = path.clone();
+            // Filesystem I/O is blocking — run it off the async runtime.
+            let result =
+                tokio::task::spawn_blocking(move || crate::fsbrowse::list_dir(&req_path)).await;
+            match result {
+                Ok(Ok((canon, entries))) => {
+                    // Strip the Windows `\\?\` verbatim prefix for display.
+                    let path = canon
+                        .to_string_lossy()
+                        .strip_prefix(r"\\?\")
+                        .map(str::to_owned)
+                        .unwrap_or_else(|| canon.to_string_lossy().into_owned());
+                    let r = ClientMessage::ReportDirListing {
+                        request_id,
+                        path,
+                        entries,
+                    };
+                    send(ws_tx, &r).await?;
+                }
+                Ok(Err(e)) => {
+                    // Unreadable / outside jail: report an empty listing for the
+                    // requested path so the phone doesn't hang. The gateway
+                    // still audits the attempt by path.
+                    tracing::warn!(error = %e, path = %path, "list_dir failed");
+                    let r = ClientMessage::ReportDirListing {
+                        request_id,
+                        path: path.clone(),
+                        entries: Vec::new(),
+                    };
+                    send(ws_tx, &r).await?;
+                }
+                Err(e) => tracing::error!(error = %e, "list_dir task panicked"),
+            }
+        }
         other => tracing::warn!(?other, "unexpected message from gateway"),
     }
     Ok(())

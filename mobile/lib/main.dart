@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'screens/login_screen.dart';
 import 'services/cockpit_client.dart';
 import 'state/connection_state.dart';
+import 'state/files_browser_state.dart';
 
 /// Dev-only: accept the gateway's self-signed TLS certificate.
 /// (Phase 2 should replace this with a real CA / pinned cert.)
@@ -36,6 +37,9 @@ class RemoteCockpitApp extends StatelessWidget {
         Provider<CockpitClient>(create: (_) => CockpitClient()),
         ChangeNotifierProvider<CockpitConnectionState>(
           create: (_) => CockpitConnectionState(),
+        ),
+        ChangeNotifierProvider<FilesBrowserState>(
+          create: (_) => FilesBrowserState(),
         ),
       ],
       child: MaterialApp(

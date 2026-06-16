@@ -40,9 +40,16 @@ class FilesBrowserState extends ChangeNotifier {
   /// Apply a listing response, but only if it matches the pending request.
   void applyListing(String requestId, String path, List<FileEntry> entries) {
     if (requestId != _pendingRequestId) return;
-    _currentPath = path;
     _entries = entries;
-    _status = entries.isEmpty ? FilesLoadStatus.empty : FilesLoadStatus.loaded;
+    if (entries.isEmpty) {
+      // Empty (unreadable / outside jail / genuinely empty): keep the previous
+      // path so the user isn't stranded on an invalid one after e.g. tapping
+      // "up" past the fs root.
+      _status = FilesLoadStatus.empty;
+    } else {
+      _currentPath = path;
+      _status = FilesLoadStatus.loaded;
+    }
     _pendingRequestId = null;
     notifyListeners();
   }

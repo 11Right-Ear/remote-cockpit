@@ -128,6 +128,33 @@ async fn handle_text(
             let fwd = ServerMessage::DirListing { request_id, path, entries };
             forward_to_phone(state, device_id, PhoneOut::Text(serde_json::to_string(&fwd)?));
         }
+        ClientMessage::ReportFileContent {
+            request_id,
+            path,
+            content,
+            truncated,
+            error,
+        } => {
+            // Phase 2 file browser: read-only file content. Audit the path
+            // (and note an error if the read failed).
+            state.audit().record(
+                event::FILE_READ,
+                actor,
+                None,
+                Some(match &error {
+                    Some(e) => format!("path={path}; error={e}"),
+                    None => format!("path={path}"),
+                }),
+            );
+            let fwd = ServerMessage::FileContent {
+                request_id,
+                path,
+                content,
+                truncated,
+                error,
+            };
+            forward_to_phone(state, device_id, PhoneOut::Text(serde_json::to_string(&fwd)?));
+        }
         // Desktop should not send phone-originated messages.
         other => tracing::warn!(?other, "unexpected message from desktop"),
     }

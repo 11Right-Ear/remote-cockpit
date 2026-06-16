@@ -1,14 +1,18 @@
-//! Phase 2 file browser: read-only directory listing with a path-jail guard.
+//! Phase 2 file browser: read-only directory listing + file reading, with a
+//! path-jail guard.
 //!
-//! SECURITY (SECURITY.md / BACKEND.md): listing is read-only. Requests are
+//! SECURITY (SECURITY.md / BACKEND.md): all access is read-only. Requests are
 //! jailed to a root directory — env `RC_FS_ROOT` if set, otherwise the agent's
 //! current working dir. A request that canonicalizes outside the root is
-//! rejected. The gateway audits every `list_dir` by path regardless of outcome.
+//! rejected. The gateway audits every `list_dir`/`read_file` by path.
 
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use protocol::DirEntry;
+
+/// Max bytes returned by `read_file`. Larger files are truncated.
+const READ_LIMIT_BYTES: usize = 256 * 1024;
 
 /// Resolve the jail root: `RC_FS_ROOT` if set (canonicalized), else the cwd.
 fn root() -> anyhow::Result<PathBuf> {
@@ -25,10 +29,16 @@ fn root() -> anyhow::Result<PathBuf> {
         .context("canonicalize cwd for fs root")
 }
 
-/// List a directory (read-only). `requested` may be absolute or relative to
-/// the jail root. Returns the canonicalized path actually listed plus its
-/// entries. Errors if the path is outside the root or unreadable.
-pub fn list_dir(requested: &str) -> anyhow::Result<(PathBuf, Vec<DirEntry>)> {
+/// Strip the Windows `\\?\` verbatim prefix for display.
+fn clean_display(path: &Path) -> String {
+    let s = path.to_string_lossy();
+    s.strip_prefix(r"\\?\")
+        .map(str::to_owned)
+        .unwrap_or_else(|| s.into_owned())
+}
+
+/// Resolve + jail a request, returning the canonicalized absolute path.
+fn resolve(requested: &str) -> anyhow::Result<PathBuf> {
     let root = root()?;
     let base = if Path::new(requested).is_absolute() {
         PathBuf::from(requested)
@@ -38,12 +48,17 @@ pub fn list_dir(requested: &str) -> anyhow::Result<(PathBuf, Vec<DirEntry>)> {
     let canon = base
         .canonicalize()
         .with_context(|| format!("canonicalize {}", base.display()))?;
-    // Jail: reject anything that escapes the root after canonicalization.
     if !canon.starts_with(&root) {
         anyhow::bail!("path escapes fs root: {}", canon.display());
     }
+    Ok(canon)
+}
+
+/// List a directory (read-only). Returns the clean display path plus entries.
+pub fn list_dir(requested: &str) -> anyhow::Result<(String, Vec<DirEntry>)> {
+    let canon = resolve(requested)?;
     let entries = read_entries(&canon)?;
-    Ok((canon, entries))
+    Ok((clean_display(&canon), entries))
 }
 
 fn read_entries(dir: &Path) -> anyhow::Result<Vec<DirEntry>> {
@@ -67,4 +82,47 @@ fn read_entries(dir: &Path) -> anyhow::Result<Vec<DirEntry>> {
     // Folders first, then files; alphabetical within each group.
     out.sort_by(|a, b| b.is_dir.cmp(&a.is_dir).then_with(|| a.name.cmp(&b.name)));
     Ok(out)
+}
+
+/// Content read from a file (read-only). `truncated` is true if the file
+/// exceeded [READ_LIMIT_BYTES].
+pub struct FileContent {
+    pub path: String,
+    pub content: String,
+    pub truncated: bool,
+}
+
+/// Read a (small, text) file's content. Errors if the path is outside the
+/// jail, is a directory, or is not valid UTF-8.
+pub fn read_file(requested: &str) -> anyhow::Result<FileContent> {
+    let canon = resolve(requested)?;
+    let meta =
+        std::fs::metadata(&canon).with_context(|| format!("metadata {}", canon.display()))?;
+    if meta.is_dir() {
+        anyhow::bail!("is a directory");
+    }
+    let total = meta.len();
+    let truncated = total > READ_LIMIT_BYTES as u64;
+
+    use std::io::Read;
+    let mut buf = Vec::new();
+    std::fs::File::open(&canon)
+        .with_context(|| format!("open {}", canon.display()))?
+        .take(READ_LIMIT_BYTES as u64)
+        .read_to_end(&mut buf)
+        .with_context(|| format!("read {}", canon.display()))?;
+
+    let content = match std::str::from_utf8(&buf) {
+        Ok(s) => s.to_owned(),
+        Err(_) => anyhow::bail!(
+            "not a text file (invalid UTF-8{})",
+            if truncated { " — or truncated mid-character" } else { "" }
+        ),
+    };
+
+    Ok(FileContent {
+        path: clean_display(&canon),
+        content,
+        truncated,
+    })
 }

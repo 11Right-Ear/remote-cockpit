@@ -77,6 +77,18 @@ class ListDirRequest extends ClientMessage {
       };
 }
 
+class ReadFileRequest extends ClientMessage {
+  final String requestId;
+  final String path;
+  const ReadFileRequest({required this.requestId, required this.path});
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': 'read_file',
+        'request_id': requestId,
+        'path': path,
+      };
+}
+
 class PingMessage extends ClientMessage {
   final int tsMs;
   const PingMessage({required this.tsMs});
@@ -147,6 +159,14 @@ abstract class ServerMessage {
           entries: (json['entries'] as List<dynamic>)
               .map((e) => FileEntry.fromJson(e as Map<String, dynamic>))
               .toList(),
+        );
+      case 'file_content':
+        return FileContentResponse(
+          requestId: json['request_id'] as String,
+          path: json['path'] as String,
+          content: json['content'] as String?,
+          truncated: json['truncated'] as bool? ?? false,
+          error: json['error'] as String?,
         );
       default:
         return UnknownMessage(type: type?.toString() ?? '');
@@ -255,5 +275,22 @@ class DirListResponse extends ServerMessage {
     required this.requestId,
     required this.path,
     required this.entries,
+  });
+}
+
+/// Read-only file content (response to `read_file`). `content` is null on
+/// error; `truncated` is true if the size cap was hit.
+class FileContentResponse extends ServerMessage {
+  final String requestId;
+  final String path;
+  final String? content;
+  final bool truncated;
+  final String? error;
+  const FileContentResponse({
+    required this.requestId,
+    required this.path,
+    required this.content,
+    required this.truncated,
+    required this.error,
   });
 }

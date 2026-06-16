@@ -235,13 +235,7 @@ async fn handle_text(
             let result =
                 tokio::task::spawn_blocking(move || crate::fsbrowse::list_dir(&req_path)).await;
             match result {
-                Ok(Ok((canon, entries))) => {
-                    // Strip the Windows `\\?\` verbatim prefix for display.
-                    let path = canon
-                        .to_string_lossy()
-                        .strip_prefix(r"\\?\")
-                        .map(str::to_owned)
-                        .unwrap_or_else(|| canon.to_string_lossy().into_owned());
+                Ok(Ok((path, entries))) => {
                     let r = ClientMessage::ReportDirListing {
                         request_id,
                         path,
@@ -263,6 +257,36 @@ async fn handle_text(
                 }
                 Err(e) => tracing::error!(error = %e, "list_dir task panicked"),
             }
+        }
+        ClientMessage::ReadFile { request_id, path } => {
+            let request_id = request_id.clone();
+            let req_path = path.clone();
+            let result =
+                tokio::task::spawn_blocking(move || crate::fsbrowse::read_file(&req_path)).await;
+            let r = match result {
+                Ok(Ok(fc)) => ClientMessage::ReportFileContent {
+                    request_id,
+                    path: fc.path,
+                    content: Some(fc.content),
+                    truncated: fc.truncated,
+                    error: None,
+                },
+                Ok(Err(e)) => {
+                    tracing::warn!(error = %e, path = %path, "read_file failed");
+                    ClientMessage::ReportFileContent {
+                        request_id,
+                        path: path.clone(),
+                        content: None,
+                        truncated: false,
+                        error: Some(e.to_string()),
+                    }
+                }
+                Err(e) => {
+                    tracing::error!(error = %e, "read_file task panicked");
+                    return Ok(());
+                }
+            };
+            send(ws_tx, &r).await?;
         }
         other => tracing::warn!(?other, "unexpected message from gateway"),
     }

@@ -120,7 +120,8 @@ async fn handle_text(
         | ClientMessage::OpenSession { .. }
         | ClientMessage::CloseSession { .. }
         | ClientMessage::ListDir { .. }
-        | ClientMessage::ReadFile { .. } => {
+        | ClientMessage::ReadFile { .. }
+        | ClientMessage::ReadImage { .. } => {
             if let Some(link) = state.desktops().get(device_id) {
                 let _ = link.desktop_tx.send(DesktopOut::Text(raw));
             }

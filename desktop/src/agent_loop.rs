@@ -288,6 +288,38 @@ async fn handle_text(
             };
             send(ws_tx, &r).await?;
         }
+        ClientMessage::ReadImage { request_id, path } => {
+            let request_id = request_id.clone();
+            let req_path = path.clone();
+            let result =
+                tokio::task::spawn_blocking(move || crate::fsbrowse::read_image(&req_path)).await;
+            let r = match result {
+                Ok(Ok(img)) => ClientMessage::ReportImageContent {
+                    request_id,
+                    path: img.path,
+                    mime_type: Some(img.mime_type),
+                    data_base64: Some(img.data_base64),
+                    truncated: img.truncated,
+                    error: None,
+                },
+                Ok(Err(e)) => {
+                    tracing::warn!(error = %e, path = %path, "read_image failed");
+                    ClientMessage::ReportImageContent {
+                        request_id,
+                        path: path.clone(),
+                        mime_type: None,
+                        data_base64: None,
+                        truncated: false,
+                        error: Some(e.to_string()),
+                    }
+                }
+                Err(e) => {
+                    tracing::error!(error = %e, "read_image task panicked");
+                    return Ok(());
+                }
+            };
+            send(ws_tx, &r).await?;
+        }
         other => tracing::warn!(?other, "unexpected message from gateway"),
     }
     Ok(())

@@ -20,6 +20,7 @@ pub mod event {
     pub const DESKTOP_OFFLINE: &str = "desktop_offline";
     pub const DIR_LIST: &str = "dir_list";
     pub const FILE_READ: &str = "file_read";
+    pub const IMAGE_READ: &str = "image_read";
 }
 
 #[derive(Debug)]

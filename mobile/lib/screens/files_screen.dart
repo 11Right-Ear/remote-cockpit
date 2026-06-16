@@ -16,6 +16,7 @@ import '../protocol/messages.dart';
 import '../services/cockpit_client.dart';
 import '../state/files_browser_state.dart';
 import 'file_viewer_screen.dart';
+import 'image_viewer_screen.dart';
 
 class FilesScreen extends StatefulWidget {
   const FilesScreen({super.key});
@@ -99,18 +100,23 @@ class _FilesScreenState extends State<FilesScreen> {
           itemBuilder: (_, i) {
             final e = state.entries[i];
             return ListTile(
-              leading: Icon(e.isDir ? Icons.folder : Icons.insert_drive_file),
+              leading: Icon(_iconFor(e)),
               title: Text(e.name),
               subtitle: e.isDir ? null : Text(_humanSize(e.size)),
               onTap: () {
+                final path = '${state.currentPath}/${e.name}';
                 if (e.isDir) {
-                  _load('${state.currentPath}/${e.name}');
+                  _load(path);
+                } else if (_isImage(e.name)) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ImageViewerScreen(path: path),
+                    ),
+                  );
                 } else {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => FileViewerScreen(
-                        path: '${state.currentPath}/${e.name}',
-                      ),
+                      builder: (_) => FileViewerScreen(path: path),
                     ),
                   );
                 }
@@ -130,6 +136,22 @@ class _FilesScreenState extends State<FilesScreen> {
     final idx = slash > back ? slash : back;
     if (idx <= 0) return '.';
     return path.substring(0, idx);
+  }
+
+  bool _isImage(String name) {
+    final lower = name.toLowerCase();
+    return lower.endsWith('.png') ||
+        lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.gif') ||
+        lower.endsWith('.webp') ||
+        lower.endsWith('.bmp');
+  }
+
+  IconData _iconFor(FileEntry e) {
+    if (e.isDir) return Icons.folder;
+    if (_isImage(e.name)) return Icons.image_outlined;
+    return Icons.insert_drive_file;
   }
 
   String _humanSize(int bytes) {

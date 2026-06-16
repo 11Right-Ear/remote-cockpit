@@ -9,10 +9,13 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
+use base64::Engine;
 use protocol::DirEntry;
 
 /// Max bytes returned by `read_file`. Larger files are truncated.
 const READ_LIMIT_BYTES: usize = 256 * 1024;
+/// Max bytes returned by `read_image`. Larger images are truncated/error in V1.
+const IMAGE_LIMIT_BYTES: usize = 1024 * 1024;
 
 /// Resolve the jail root: `RC_FS_ROOT` if set (canonicalized), else the cwd.
 fn root() -> anyhow::Result<PathBuf> {
@@ -125,4 +128,46 @@ pub fn read_file(requested: &str) -> anyhow::Result<FileContent> {
         content,
         truncated,
     })
+}
+
+/// Image content read from a file (read-only). `data_base64` is safe to embed
+/// in the JSON control frame for V1-sized images.
+pub struct ImageContent {
+    pub path: String,
+    pub mime_type: String,
+    pub data_base64: String,
+    pub truncated: bool,
+}
+
+pub fn read_image(requested: &str) -> anyhow::Result<ImageContent> {
+    let canon = resolve(requested)?;
+    let meta =
+        std::fs::metadata(&canon).with_context(|| format!("metadata {}", canon.display()))?;
+    if meta.is_dir() {
+        anyhow::bail!("is a directory");
+    }
+    let mime_type = mime_for_path(&canon).ok_or_else(|| anyhow::anyhow!("unsupported image type"))?;
+    let truncated = meta.len() > IMAGE_LIMIT_BYTES as u64;
+    if truncated {
+        anyhow::bail!("image too large (limit {} bytes)", IMAGE_LIMIT_BYTES);
+    }
+    let bytes = std::fs::read(&canon).with_context(|| format!("read {}", canon.display()))?;
+    Ok(ImageContent {
+        path: clean_display(&canon),
+        mime_type: mime_type.to_string(),
+        data_base64: base64::engine::general_purpose::STANDARD.encode(bytes),
+        truncated,
+    })
+}
+
+pub fn mime_for_path(path: &Path) -> Option<&'static str> {
+    let ext = path.extension()?.to_string_lossy().to_ascii_lowercase();
+    match ext.as_str() {
+        "png" => Some("image/png"),
+        "jpg" | "jpeg" => Some("image/jpeg"),
+        "gif" => Some("image/gif"),
+        "webp" => Some("image/webp"),
+        "bmp" => Some("image/bmp"),
+        _ => None,
+    }
 }

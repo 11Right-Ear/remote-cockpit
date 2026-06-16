@@ -80,6 +80,14 @@ pub enum ClientMessage {
         path: String,
     },
 
+    /// Phone asks the desktop to read a (small) image file. V1 returns base64
+    /// inside JSON with a size cap; larger/binary streaming can use tagged
+    /// binary frames later.
+    ReadImage {
+        request_id: String,
+        path: String,
+    },
+
     // --- desktop -> gateway: session lifecycle reports ---
     // The desktop agent emits these; the gateway audits them and forwards the
     // equivalent `ServerMessage` to the linked phone. Phones never send these.
@@ -123,6 +131,17 @@ pub enum ClientMessage {
         request_id: String,
         path: String,
         content: Option<String>,
+        truncated: bool,
+        error: Option<String>,
+    },
+
+    /// Desktop's response to a `ReadImage` request. `data_base64` is None on
+    /// error; `truncated` is true if the image exceeded the size cap.
+    ReportImageContent {
+        request_id: String,
+        path: String,
+        mime_type: Option<String>,
+        data_base64: Option<String>,
         truncated: bool,
         error: Option<String>,
     },
@@ -213,6 +232,17 @@ pub enum ServerMessage {
         request_id: String,
         path: String,
         content: Option<String>,
+        truncated: bool,
+        error: Option<String>,
+    },
+
+    /// Read-only image content (Phase 2 image viewer). Response to a phone's
+    /// `read_image` request, correlated by `request_id`.
+    ImageContent {
+        request_id: String,
+        path: String,
+        mime_type: Option<String>,
+        data_base64: Option<String>,
         truncated: bool,
         error: Option<String>,
     },
@@ -500,6 +530,66 @@ mod tests {
                 assert!(content.is_none());
                 assert!(truncated);
                 assert_eq!(error.as_deref(), Some("not a text file"));
+            }
+            _ => panic!("decoded wrong variant"),
+        }
+    }
+
+    #[test]
+    fn read_image_roundtrip() {
+        let msg = ClientMessage::ReadImage {
+            request_id: "req-img".into(),
+            path: "/home/dev/project/icon.png".into(),
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert!(json.contains(r#""type":"read_image""#));
+        let back: ClientMessage = serde_json::from_str(&json).unwrap();
+        match back {
+            ClientMessage::ReadImage { request_id, path } => {
+                assert_eq!(request_id, "req-img");
+                assert_eq!(path, "/home/dev/project/icon.png");
+            }
+            _ => panic!("decoded wrong variant"),
+        }
+    }
+
+    #[test]
+    fn image_content_roundtrip() {
+        let report = ClientMessage::ReportImageContent {
+            request_id: "req-img".into(),
+            path: "/home/dev/project/icon.png".into(),
+            mime_type: Some("image/png".into()),
+            data_base64: Some("iVBORw0KGgo=".into()),
+            truncated: false,
+            error: None,
+        };
+        let j = serde_json::to_string(&report).unwrap();
+        assert!(j.contains(r#""type":"report_image_content""#));
+        let back: ClientMessage = serde_json::from_str(&j).unwrap();
+        match back {
+            ClientMessage::ReportImageContent { mime_type, data_base64, .. } => {
+                assert_eq!(mime_type.as_deref(), Some("image/png"));
+                assert_eq!(data_base64.as_deref(), Some("iVBORw0KGgo="));
+            }
+            _ => panic!("decoded wrong variant"),
+        }
+
+        let resp = ServerMessage::ImageContent {
+            request_id: "req-img".into(),
+            path: "/home/dev/project/icon.png".into(),
+            mime_type: Some("image/png".into()),
+            data_base64: Some("iVBORw0KGgo=".into()),
+            truncated: false,
+            error: None,
+        };
+        let j = serde_json::to_string(&resp).unwrap();
+        assert!(j.contains(r#""type":"image_content""#));
+        let back: ServerMessage = serde_json::from_str(&j).unwrap();
+        match back {
+            ServerMessage::ImageContent { mime_type, data_base64, error, .. } => {
+                assert_eq!(mime_type.as_deref(), Some("image/png"));
+                assert_eq!(data_base64.as_deref(), Some("iVBORw0KGgo="));
+                assert!(error.is_none());
             }
             _ => panic!("decoded wrong variant"),
         }

@@ -155,6 +155,33 @@ async fn handle_text(
             };
             forward_to_phone(state, device_id, PhoneOut::Text(serde_json::to_string(&fwd)?));
         }
+        ClientMessage::ReportImageContent {
+            request_id,
+            path,
+            mime_type,
+            data_base64,
+            truncated,
+            error,
+        } => {
+            state.audit().record(
+                event::IMAGE_READ,
+                actor,
+                None,
+                Some(match &error {
+                    Some(e) => format!("path={path}; error={e}"),
+                    None => format!("path={path}"),
+                }),
+            );
+            let fwd = ServerMessage::ImageContent {
+                request_id,
+                path,
+                mime_type,
+                data_base64,
+                truncated,
+                error,
+            };
+            forward_to_phone(state, device_id, PhoneOut::Text(serde_json::to_string(&fwd)?));
+        }
         // Desktop should not send phone-originated messages.
         other => tracing::warn!(?other, "unexpected message from desktop"),
     }

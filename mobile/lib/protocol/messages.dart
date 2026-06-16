@@ -89,6 +89,18 @@ class ReadFileRequest extends ClientMessage {
       };
 }
 
+class ReadImageRequest extends ClientMessage {
+  final String requestId;
+  final String path;
+  const ReadImageRequest({required this.requestId, required this.path});
+  @override
+  Map<String, dynamic> toJson() => {
+        'type': 'read_image',
+        'request_id': requestId,
+        'path': path,
+      };
+}
+
 class PingMessage extends ClientMessage {
   final int tsMs;
   const PingMessage({required this.tsMs});
@@ -165,6 +177,15 @@ abstract class ServerMessage {
           requestId: json['request_id'] as String,
           path: json['path'] as String,
           content: json['content'] as String?,
+          truncated: json['truncated'] as bool? ?? false,
+          error: json['error'] as String?,
+        );
+      case 'image_content':
+        return ImageContentResponse(
+          requestId: json['request_id'] as String,
+          path: json['path'] as String,
+          mimeType: json['mime_type'] as String?,
+          dataBase64: json['data_base64'] as String?,
           truncated: json['truncated'] as bool? ?? false,
           error: json['error'] as String?,
         );
@@ -290,6 +311,25 @@ class FileContentResponse extends ServerMessage {
     required this.requestId,
     required this.path,
     required this.content,
+    required this.truncated,
+    required this.error,
+  });
+}
+
+/// Read-only image content (response to `read_image`). `dataBase64` is null on
+/// error; `truncated` is true if the size cap was hit.
+class ImageContentResponse extends ServerMessage {
+  final String requestId;
+  final String path;
+  final String? mimeType;
+  final String? dataBase64;
+  final bool truncated;
+  final String? error;
+  const ImageContentResponse({
+    required this.requestId,
+    required this.path,
+    required this.mimeType,
+    required this.dataBase64,
     required this.truncated,
     required this.error,
   });

@@ -119,7 +119,8 @@ async fn handle_text(
         | ClientMessage::TerminalResize { .. }
         | ClientMessage::OpenSession { .. }
         | ClientMessage::CloseSession { .. }
-        | ClientMessage::ListDir { .. } => {
+        | ClientMessage::ListDir { .. }
+        | ClientMessage::ReadFile { .. } => {
             if let Some(link) = state.desktops().get(device_id) {
                 let _ = link.desktop_tx.send(DesktopOut::Text(raw));
             }

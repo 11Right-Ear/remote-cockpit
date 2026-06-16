@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 import '../protocol/messages.dart';
 import '../services/cockpit_client.dart';
 import '../state/files_browser_state.dart';
+import 'file_viewer_screen.dart';
 
 class FilesScreen extends StatefulWidget {
   const FilesScreen({super.key});
@@ -101,9 +102,19 @@ class _FilesScreenState extends State<FilesScreen> {
               leading: Icon(e.isDir ? Icons.folder : Icons.insert_drive_file),
               title: Text(e.name),
               subtitle: e.isDir ? null : Text(_humanSize(e.size)),
-              onTap: e.isDir
-                  ? () => _load('${state.currentPath}/${e.name}')
-                  : null,
+              onTap: () {
+                if (e.isDir) {
+                  _load('${state.currentPath}/${e.name}');
+                } else {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => FileViewerScreen(
+                        path: '${state.currentPath}/${e.name}',
+                      ),
+                    ),
+                  );
+                }
+              },
             );
           },
         );

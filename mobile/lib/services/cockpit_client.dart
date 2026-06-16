@@ -111,6 +111,13 @@ class CockpitClient {
     _send(ListDirRequest(requestId: requestId, path: path));
   }
 
+  /// Request a read-only file's content (Phase 2 file browser). The response
+  /// arrives as a [FileContentResponse] on [messages], correlated by
+  /// `requestId`.
+  void requestReadFile(String requestId, String path) {
+    _send(ReadFileRequest(requestId: requestId, path: path));
+  }
+
   /// Close the connection.
   Future<void> close() async {
     await _sub?.cancel();

@@ -72,6 +72,14 @@ pub enum ClientMessage {
         path: String,
     },
 
+    /// Phone asks the desktop to read a (small, text) file's content. Phase 2
+    /// file browser V1 (read-only). `request_id` correlates the response.
+    /// Phone -> desktop (routed).
+    ReadFile {
+        request_id: String,
+        path: String,
+    },
+
     // --- desktop -> gateway: session lifecycle reports ---
     // The desktop agent emits these; the gateway audits them and forwards the
     // equivalent `ServerMessage` to the linked phone. Phones never send these.
@@ -106,6 +114,17 @@ pub enum ClientMessage {
         request_id: String,
         path: String,
         entries: Vec<DirEntry>,
+    },
+
+    /// Desktop's response to a `ReadFile` request. `content` is None on error
+    /// (see `error`); `truncated` is true if the file exceeded the size cap.
+    /// Desktop -> gateway; forwarded as `ServerMessage::FileContent`.
+    ReportFileContent {
+        request_id: String,
+        path: String,
+        content: Option<String>,
+        truncated: bool,
+        error: Option<String>,
     },
 
     /// Heartbeat.
@@ -185,6 +204,17 @@ pub enum ServerMessage {
         request_id: String,
         path: String,
         entries: Vec<DirEntry>,
+    },
+
+    /// Read-only file content (Phase 2 file browser). Response to a phone's
+    /// `read_file` request, correlated by `request_id`. `content` is None on
+    /// error; `truncated` is true if the size cap was hit.
+    FileContent {
+        request_id: String,
+        path: String,
+        content: Option<String>,
+        truncated: bool,
+        error: Option<String>,
     },
 
     /// Generic protocol-level error.
@@ -409,6 +439,67 @@ mod tests {
                 assert_eq!(request_id, "req-1");
                 assert_eq!(entries.len(), 2);
                 assert_eq!(entries[1].name, "README.md");
+            }
+            _ => panic!("decoded wrong variant"),
+        }
+    }
+
+    #[test]
+    fn read_file_roundtrip() {
+        let msg = ClientMessage::ReadFile {
+            request_id: "req-2".into(),
+            path: "/home/dev/project/README.md".into(),
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert!(json.contains(r#""type":"read_file""#));
+        let back: ClientMessage = serde_json::from_str(&json).unwrap();
+        match back {
+            ClientMessage::ReadFile { request_id, path } => {
+                assert_eq!(request_id, "req-2");
+                assert_eq!(path, "/home/dev/project/README.md");
+            }
+            _ => panic!("decoded wrong variant"),
+        }
+    }
+
+    #[test]
+    fn file_content_roundtrip() {
+        // success path: content present, no error
+        let report = ClientMessage::ReportFileContent {
+            request_id: "req-2".into(),
+            path: "/home/dev/project/README.md".into(),
+            content: Some("# hello".into()),
+            truncated: false,
+            error: None,
+        };
+        let j = serde_json::to_string(&report).unwrap();
+        assert!(j.contains(r#""type":"report_file_content""#));
+        let back: ClientMessage = serde_json::from_str(&j).unwrap();
+        match back {
+            ClientMessage::ReportFileContent { content, truncated, error, .. } => {
+                assert_eq!(content.as_deref(), Some("# hello"));
+                assert!(!truncated);
+                assert!(error.is_none());
+            }
+            _ => panic!("decoded wrong variant"),
+        }
+
+        // error path: no content, error set, truncated
+        let resp = ServerMessage::FileContent {
+            request_id: "req-2".into(),
+            path: "/x".into(),
+            content: None,
+            truncated: true,
+            error: Some("not a text file".into()),
+        };
+        let j = serde_json::to_string(&resp).unwrap();
+        assert!(j.contains(r#""type":"file_content""#));
+        let back: ServerMessage = serde_json::from_str(&j).unwrap();
+        match back {
+            ServerMessage::FileContent { content, truncated, error, .. } => {
+                assert!(content.is_none());
+                assert!(truncated);
+                assert_eq!(error.as_deref(), Some("not a text file"));
             }
             _ => panic!("decoded wrong variant"),
         }
